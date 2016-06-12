@@ -162,9 +162,13 @@ public final class ScoutFrame extends JFrame implements WindowListener, TableMod
                 return b;
             }
         }
+        rankTitleToId(name);
         return null;
     }
-
+/**
+ * @param name String
+ * @return ScoutRank
+ */
     ScoutRank rankTitleToId(String name) {
         List<ScoutRank> l = k.selectScoutRank();
         for (ScoutRank b : l) {

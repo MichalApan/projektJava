@@ -3,18 +3,25 @@ package cardIndex;
 import model.*;
 import java.sql.*;
 import java.util.*;
+import java.util.concurrent.Callable;
 import oracle.jdbc.driver.OracleDriver;
 
 /**
  *
  * @author Michał
  */
-public class CardIndex implements Runnable{
+public class CardIndex implements Callable {
 
     public static final String DB_URL = "jdbc:oracle:thin:@localhost:1521:ORA2015";
     private Connection conn;
     private Statement stat;
 
+    /**
+     * Construktor of CardIndes class
+     *
+     * @param login
+     * @param passwd
+     */
     public CardIndex(String login, String passwd) {
         try {
             DriverManager.registerDriver(new OracleDriver());
@@ -30,6 +37,39 @@ public class CardIndex implements Runnable{
         }
     }
 
+    /**
+     * Updates value in DataBase
+     *
+     * @param pesel
+     * @param table
+     * @param column
+     * @param id
+     * @param data
+     * @return
+     */
+    public boolean update(int pesel, String table, String column, String id, String data) {
+        try {
+            String query = "UPDATE " + table + " SET " + column + " = ? WHERE " + id + " =  ?";
+            PreparedStatement prepStmt = conn.prepareStatement(query);
+            prepStmt.setString(1, data);
+            prepStmt.setInt(2, pesel);
+            prepStmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Bład przy edytowaniu harcerza");
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Inserts values into Scouts table
+     *
+     * @param pesel
+     * @param name
+     * @param surname
+     * @param scoutRankId
+     * @return true or false
+     */
     public boolean insertScout(int pesel, String name, String surname, int scoutRankId) {
         try {
             PreparedStatement prepStmt = conn.prepareStatement(
@@ -47,6 +87,12 @@ public class CardIndex implements Runnable{
         return true;
     }
 
+    /**
+     * Deleste values from Scouts table
+     *
+     * @param pesel
+     * @return true or false
+     */
     public boolean deleteScout(int pesel) {
         try {
             PreparedStatement prepStmt = conn.prepareStatement(
@@ -55,26 +101,16 @@ public class CardIndex implements Runnable{
             prepStmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("Blad przy usuwaniu harcerza");
-            e.printStackTrace();
             return false;
         }
         return true;
     }
 
-    public boolean update(int pesel, String table, String column, String id, String data) {
-        try {
-            String query = "UPDATE " + table + " SET " + column + " = ? WHERE " + id + " =  ?";
-            PreparedStatement prepStmt = conn.prepareStatement(query);
-            prepStmt.setString(1, data);
-            prepStmt.setInt(2, pesel);
-            prepStmt.executeUpdate();
-        } catch (SQLException e) {
-            System.err.println("Bład przy edytowaniu harcerza");
-            return false;
-        }
-        return true;
-    }
-
+    /**
+     * Sends query to DataBase
+     *
+     * @return List of Scouta
+     */
     public List<Scout> selectScouts() {
         List<Scout> l = new LinkedList<>();
         try {
@@ -95,6 +131,14 @@ public class CardIndex implements Runnable{
         return l;
     }
 
+    /**
+     * Inserts values into Badges table
+     *
+     * @param id
+     * @param title
+     * @param tasks
+     * @return true or false
+     */
     public boolean insertBadge(int id, String title, String tasks) {
         try {
             PreparedStatement prepStmt = conn.prepareStatement(
@@ -110,6 +154,12 @@ public class CardIndex implements Runnable{
         return true;
     }
 
+    /**
+     * Deletes values from Badges table
+     *
+     * @param id
+     * @return true or false
+     */
     public boolean deleteBadge(int id) {
         try {
             PreparedStatement prepStmt = conn.prepareStatement(
@@ -123,6 +173,10 @@ public class CardIndex implements Runnable{
         return true;
     }
 
+    /**
+     *
+     * @return List of Badges
+     */
     public List<Badge> selectBadges() {
         List<Badge> l = new LinkedList<>();
         try {
@@ -142,6 +196,13 @@ public class CardIndex implements Runnable{
         return l;
     }
 
+    /**
+     * Inserts values into ScoutRanks table
+     *
+     * @param id
+     * @param title
+     * @return true or false
+     */
     public boolean insertScoutRank(int id, String title) {
         try {
             PreparedStatement prepStmt = conn.prepareStatement(
@@ -156,6 +217,12 @@ public class CardIndex implements Runnable{
         return true;
     }
 
+    /**
+     * Deletes value from ScoutRanks table
+     *
+     * @param id
+     * @return true or false
+     */
     public boolean deleteScoutRank(int id) {
         try {
             PreparedStatement prepStmt = conn.prepareStatement(
@@ -169,6 +236,11 @@ public class CardIndex implements Runnable{
         return true;
     }
 
+    /**
+     * Selecting values from ScoutRanks table
+     *
+     * @return List of ScoutRank
+     */
     public List<ScoutRank> selectScoutRank() {
         List<ScoutRank> l = new LinkedList<>();
         try {
@@ -186,6 +258,17 @@ public class CardIndex implements Runnable{
         return l;
     }
 
+    /**
+     * Inserts value into GainedRanks table
+     *
+     * @param pesel
+     * @param scoutRankId
+     * @param status
+     * @param supervisor
+     * @param commandDate
+     * @param commandNumber
+     * @return true or false
+     */
     public boolean insertGainedRank(int pesel, int scoutRankId, int status,
             String supervisor, String commandDate, String commandNumber) {
         try {
@@ -205,6 +288,13 @@ public class CardIndex implements Runnable{
         return true;
     }
 
+    /**
+     * Deletes value from GainedRanks table
+     *
+     * @param pesel
+     * @param scoutRankId
+     * @return
+     */
     public boolean deleteGainedRank(int pesel, int scoutRankId) {
         try {
             PreparedStatement prepStmt = conn.prepareStatement(
@@ -219,6 +309,11 @@ public class CardIndex implements Runnable{
         return true;
     }
 
+    /**
+     * Selects values from GainedRanks table
+     *
+     * @return List of GainedRank
+     */
     public List<GainedRank> selectGainedRank() {
         List<GainedRank> l = new LinkedList<>();
         try {
@@ -241,6 +336,15 @@ public class CardIndex implements Runnable{
         return l;
     }
 
+    /**
+     * Inserts value int GainedBadge table
+     *
+     * @param pesel
+     * @param badgeId
+     * @param commandNumber
+     * @param commandDate
+     * @return true or false
+     */
     public boolean insertGainedBadge(int pesel, int badgeId, String commandNumber,
             String commandDate) {
         try {
@@ -258,6 +362,13 @@ public class CardIndex implements Runnable{
         return true;
     }
 
+    /**
+     * Deletes value from GainedBadge table
+     *
+     * @param pesel
+     * @param badgeId
+     * @return true or false
+     */
     public boolean deleteGainedBadge(int pesel, int badgeId) {
         try {
             PreparedStatement prepStmt = conn.prepareStatement(
@@ -272,6 +383,11 @@ public class CardIndex implements Runnable{
         return true;
     }
 
+    /**
+     * Selects values from GainedBadge table
+     *
+     * @return List of GainedBadge
+     */
     public List<GainedBadge> selectGainedBadge() {
         List<GainedBadge> l = new LinkedList<>();
         try {
@@ -291,6 +407,9 @@ public class CardIndex implements Runnable{
         return l;
     }
 
+    /**
+     * Closing connection with DataBase
+     */
     public void closeConnection() {
         try {
             conn.close();
@@ -300,9 +419,15 @@ public class CardIndex implements Runnable{
         }
     }
 
+    /**
+     * Selects scouts in new Thread
+     *
+     * @return List of Scout
+     * @throws Exception
+     */
     @Override
-    public void run() {
-        
+    public List<Scout> call() throws Exception {
+        return selectScouts();
     }
 
 }

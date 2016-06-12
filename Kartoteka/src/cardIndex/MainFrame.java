@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package cardIndex;
 
 import java.awt.*;
@@ -10,6 +5,8 @@ import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.util.List;
 import java.util.Vector;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.*;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
@@ -32,13 +29,19 @@ public class MainFrame extends javax.swing.JFrame implements WindowListener, Tab
      */
     public MainFrame() {
         initComponents();
-        setDimensions();
+        addWindowListener(this);
+        setDimensions(this);
 
         jPanelTable.setVisible(false);
-        jMenuBar1.setVisible(false);
+        jMenuBar1.setVisible(false);     
     }
 
-    private void setDimensions() {
+    /**
+     * Sets JFrame into middle of screen
+     *
+     * @param JFrame
+     */
+    private void setDimensions(JFrame o) {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         Dimension frameSize = this.getSize();
         if (frameSize.height > screenSize.height) {
@@ -47,7 +50,7 @@ public class MainFrame extends javax.swing.JFrame implements WindowListener, Tab
         if (frameSize.width > screenSize.width) {
             frameSize.width = screenSize.width;
         }
-        this.setLocation(new Point((screenSize.width - frameSize.width) / 2,
+        o.setLocation(new Point((screenSize.width - frameSize.width) / 2,
                 (screenSize.height - frameSize.height) / 2));
     }
 
@@ -270,26 +273,18 @@ public class MainFrame extends javax.swing.JFrame implements WindowListener, Tab
             int row = jTable1.getSelectedRow();
             int pesel = Integer.parseInt(jTable1.getValueAt(row, 0).toString());
             if (row >= 0 && row < jTable1.getRowCount()) {
-                List<Scout> l = k.selectScouts();
-
-                for (Scout s : l) {
-                    if (s.getPesel() == pesel) {
-                        ScoutFrame sf = new ScoutFrame(k, s);
-
-                        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-                        Dimension frameSize = sf.getSize();
-                        if (frameSize.height > screenSize.height) {
-                            frameSize.height = screenSize.height;
+                try {
+                    List<Scout> l = k.call();
+                    for (Scout s : l) {
+                        if (s.getPesel() == pesel) {
+                            ScoutFrame sf = new ScoutFrame(k, s);
+                            setDimensions(sf);
+                            sf.setVisible(true);
+                            sf.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
                         }
-                        if (frameSize.width > screenSize.width) {
-                            frameSize.width = screenSize.width;
-                        }
-
-                        sf.setLocation((screenSize.width - frameSize.width) / 2,
-                                (screenSize.height - frameSize.height) / 2);
-                        sf.setVisible(true);
-                        sf.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
                     }
+                } catch (Exception ex) {
+                    Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
         }
@@ -346,18 +341,23 @@ public class MainFrame extends javax.swing.JFrame implements WindowListener, Tab
                 int row = jTable3.getSelectedRow();
                 if (row >= 0) {
                     int id = Integer.parseInt(jTable3.getValueAt(row, 0).toString());
-                    List<Scout> l = k.selectScouts();
-                    for (Scout g : l) {
-                        if (g.getScoutRankId() == id) {
-                            errMsg = errMsg.concat("\n\t" + g.getPesel());
-                            check = false;
+                    try {
+                        List<Scout> l;
+                        l = k.call();
+                        for (Scout g : l) {
+                            if (g.getScoutRankId() == id) {
+                                errMsg = errMsg.concat("\n\t" + g.getPesel());
+                                check = false;
+                            }
                         }
-                    }
-                    if (check) {
-                        k.deleteScoutRank(id);
-                    } else {
-                        JOptionPane.showMessageDialog(this, errMsg,
-                                "Błąd", JOptionPane.ERROR_MESSAGE);
+                        if (check) {
+                            k.deleteScoutRank(id);
+                        } else {
+                            JOptionPane.showMessageDialog(this, errMsg,
+                                    "Błąd", JOptionPane.ERROR_MESSAGE);
+                        }
+                    } catch (Exception ex) {
+                        Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
                     }
                 }
                 break;
@@ -411,44 +411,54 @@ public class MainFrame extends javax.swing.JFrame implements WindowListener, Tab
                 break;
         }
         scoutRankTableInit();
-
         badgeTableInit();
-
         scoutTableInit();
     }//GEN-LAST:event_jMenuItemAddActionPerformed
 
+    /**
+     * Intializes table with Scouts: -set columns names -adds rows with data
+     * from DataBase
+     */
     private void scoutTableInit() {
-        DefaultTableModel dtmScouts = new DefaultTableModel();
-        dtmScouts.addTableModelListener(this);
-        jTable1.setModel(dtmScouts);
-        jTable1.removeAll();
+        try {
+            DefaultTableModel dtmScouts = new DefaultTableModel();
+            dtmScouts.addTableModelListener(this);
+            jTable1.setModel(dtmScouts);
+            jTable1.removeAll();
 
-        String[] columnsScouts = {"PESEL", "Imię", "Nazwisko", "Stopień"};
-        setColumns(dtmScouts, columnsScouts);
+            String[] columnsScouts = {"PESEL", "Imię", "Nazwisko", "Stopień"};
+            setColumns(dtmScouts, columnsScouts);
 
-        List<Scout> scouts = k.selectScouts();
+            List<Scout> scouts;
+            scouts = k.call();
 
-        for (int i = 0; i < scouts.size(); i++) {
-            Scout s = scouts.get(i);
+            for (int i = 0; i < scouts.size(); i++) {
+                Scout s = scouts.get(i);
+                Vector<String> r = new Vector<>();
+                r.addElement("" + s.getPesel());
+                r.addElement("" + s.getName());
+                r.addElement("" + s.getSurname());
+                ScoutRank rank = translateIdToRank(s.getScoutRankId());
+                r.addElement("" + rank.getTitle());
+                dtmScouts.addRow(r);
+            }
 
-            Vector<String> r = new Vector<>();
-            r.addElement("" + s.getPesel());
-            r.addElement("" + s.getName());
-            r.addElement("" + s.getSurname());
-            ScoutRank rank = translateIdToRank(s.getScoutRankId());
-            r.addElement("" + rank.getTitle());
-            dtmScouts.addRow(r);
+            TableColumn rankColumn = jTable1.getColumnModel().getColumn(3);
+            List<ScoutRank> l = k.selectScoutRank();
+            cb.removeAllItems();
+            for (ScoutRank r : l) {
+                cb.addItem(r.getTitle());
+            }
+            rankColumn.setCellEditor(new DefaultCellEditor(cb));
+        } catch (Exception ex) {
+            Logger.getLogger(MainFrame.class.getName()).log(Level.SEVERE, null, ex);
         }
-
-        TableColumn rankColumn = jTable1.getColumnModel().getColumn(3);
-        List<ScoutRank> l = k.selectScoutRank();
-        cb.removeAllItems();
-        for (ScoutRank r : l) {
-            cb.addItem(r.getTitle());
-        }
-        rankColumn.setCellEditor(new DefaultCellEditor(cb));
     }
 
+    /**
+     * Intializes table with Badges: -set columns names -adds rows with data
+     * from DataBase
+     */
     private void badgeTableInit() {
         DefaultTableModel dtmBadges = new DefaultTableModel();
         dtmBadges.addTableModelListener(this);
@@ -460,9 +470,7 @@ public class MainFrame extends javax.swing.JFrame implements WindowListener, Tab
 
         List<Badge> badges = k.selectBadges();
 
-        for (int i = 0; i < badges.size(); i++) {
-            Badge b = badges.get(i);
-
+        for (Badge b : badges) {
             Vector<String> r = new Vector<>();
             r.addElement("" + b.getId());
             r.addElement("" + b.getTitle());
@@ -471,6 +479,10 @@ public class MainFrame extends javax.swing.JFrame implements WindowListener, Tab
         }
     }
 
+    /**
+     * Intializes table with ScoutRanks: -set columns names -adds rows with data
+     * from DataBase
+     */
     private void scoutRankTableInit() {
         DefaultTableModel dtmScoutRanks = new DefaultTableModel();
         dtmScoutRanks.addTableModelListener(this);
@@ -480,11 +492,9 @@ public class MainFrame extends javax.swing.JFrame implements WindowListener, Tab
         String[] columnsScoutRank = {"ID", "Nazwa"};
         setColumns(dtmScoutRanks, columnsScoutRank);
 
-        List<ScoutRank> scoutRank = k.selectScoutRank();
+        List<ScoutRank> l = k.selectScoutRank();
 
-        for (int i = 0; i < scoutRank.size(); i++) {
-            ScoutRank s = scoutRank.get(i);
-
+        for (ScoutRank s : l) {
             Vector<String> r = new Vector<>();
             r.addElement("" + s.getScoutRankId());
             r.addElement("" + s.getTitle());
@@ -492,6 +502,11 @@ public class MainFrame extends javax.swing.JFrame implements WindowListener, Tab
         }
     }
 
+    /**
+     * Searchs ScooutRank by id
+     * @param id
+     * @return ScoutRank
+     */
     private ScoutRank translateIdToRank(int id) {
 
         List<ScoutRank> l = k.selectScoutRank();
@@ -503,6 +518,11 @@ public class MainFrame extends javax.swing.JFrame implements WindowListener, Tab
         return null;
     }
 
+    /**
+     * Searchs ScooutRank by title
+     * @param title
+     * @return ScoutRank
+     */
     private ScoutRank translateRankTitleToId(String title) {
         List<ScoutRank> l = k.selectScoutRank();
         for (ScoutRank sr : l) {
@@ -513,6 +533,11 @@ public class MainFrame extends javax.swing.JFrame implements WindowListener, Tab
         return null;
     }
 
+    /**
+     * Set colums name
+     * @param tbm
+     * @param columns 
+     */
     private void setColumns(DefaultTableModel tbm, String[] columns) {
         for (String column : columns) {
             tbm.addColumn(column);
@@ -582,33 +607,8 @@ public class MainFrame extends javax.swing.JFrame implements WindowListener, Tab
     // End of variables declaration//GEN-END:variables
 
     @Override
-    public void windowOpened(WindowEvent e) {
-    }
-
-    @Override
     public void windowClosing(WindowEvent e) {
         k.closeConnection();
-    }
-
-    @Override
-    public void windowClosed(WindowEvent e) {
-        k.closeConnection();
-    }
-
-    @Override
-    public void windowIconified(WindowEvent e) {
-    }
-
-    @Override
-    public void windowDeiconified(WindowEvent e) {
-    }
-
-    @Override
-    public void windowActivated(WindowEvent e) {
-    }
-
-    @Override
-    public void windowDeactivated(WindowEvent e) {
     }
 
     @Override
@@ -653,5 +653,29 @@ public class MainFrame extends javax.swing.JFrame implements WindowListener, Tab
             scoutRankTableInit();
             scoutTableInit();
         }
+    }
+
+    @Override
+    public void windowOpened(WindowEvent e) {
+    }
+
+    @Override
+    public void windowClosed(WindowEvent e) {
+    }
+
+    @Override
+    public void windowIconified(WindowEvent e) {
+    }
+
+    @Override
+    public void windowDeiconified(WindowEvent e) {
+    }
+
+    @Override
+    public void windowActivated(WindowEvent e) {
+    }
+
+    @Override
+    public void windowDeactivated(WindowEvent e) {
     }
 }
